@@ -1,16 +1,20 @@
 import { useRef, useState } from 'react';
-import './App.css'
-
+import { toast } from 'sonner';
 // @ts-expect-error mehhhhh
 import * as pdfjsLib from 'pdfjs-dist/legacy/build/pdf';
 import { Toaster } from './components/ui/sonner';
-import { toast } from 'sonner';
 
-function proxyUrl(url: string) {
-  return `https://corsproxy.io/?${url}`;
+interface ListItem {
+  date: string | null;
+  title: string | null;
+  url: string | null;
 }
 
+const proxyUrl = (url: string) => `https://corsproxy.io/?${url}`;
+
 async function getLatestFromUrl(url: string): Promise<ListItem[]> {
+  console.log('Fetching items from ', url);
+
   const itemsPromise = new Promise<ListItem[]>((resolve, reject) => {
     (async () => {
       try {
@@ -46,7 +50,7 @@ async function getLatestFromUrl(url: string): Promise<ListItem[]> {
 }
 
 async function downloadPdf(url: string): Promise<Uint8Array> {
-  console.debug('Download PDF from:', url);
+  console.log('Download PDF from:', url);
 
   const downloadPdfPromise = new Promise<Uint8Array>((resolve) => {
     (async function() {
@@ -75,6 +79,8 @@ async function downloadPdf(url: string): Promise<Uint8Array> {
 
 const SEPARATOR = 'Tartalomjegyzék';
 async function parsePdf(pdfBytes: Uint8Array) {
+  console.log('Parsing PDF');
+
   const loadingTask = pdfjsLib.getDocument({ data: pdfBytes });
   const pdf = await loadingTask.promise;
   let fullText = '';
@@ -94,12 +100,6 @@ async function parsePdf(pdfBytes: Uint8Array) {
   const outputDiv = document.getElementById('output')!;
   outputDiv.innerText = "";
   outputDiv.innerText = matchText;
-}
-
-interface ListItem {
-  date: string | null;
-  title: string | null;
-  url: string | null;
 }
 
 function App() {

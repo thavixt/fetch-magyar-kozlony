@@ -106,15 +106,15 @@ button {
 
 table {
   thead {
-    @apply border-b-4 border-slate-600 font-bold;
+    @apply border-b-1 border-slate-500 font-bold;
   }
 
   tr:not(:last-child) {
-    @apply border-b-1 border-slate-600;
+    @apply border-b-1 border-slate-400;
   }
 
   td:not(:last-child) {
-    @apply border-r border-slate-600;
+    @apply border-r border-slate-400;
   }
 }
 

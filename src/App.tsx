@@ -53,7 +53,7 @@ async function downloadPdf(url: string): Promise<Uint8Array> {
   console.log('Download PDF from:', url);
 
   const downloadPdfPromise = new Promise<Uint8Array>((resolve) => {
-    (async function() {
+    (async function () {
       const response = await fetch(proxyUrl(url));
       if (!response.ok) {
         throw new Error(`Failed to fetch PDF: ${response.statusText}`);
@@ -68,16 +68,16 @@ async function downloadPdf(url: string): Promise<Uint8Array> {
       resolve(arrayBuffer);
     })();
   })
-  
+
   toast.promise<Uint8Array>(downloadPdfPromise, {
     loading: "Loading PDF file...",
-    success: "Processed PDF file",
+    // success: "Processed PDF file",
+    error: 'Oops, something went wrong :(',
   });
 
   return downloadPdfPromise;
 }
 
-const SEPARATOR = 'Tartalomjegyzék';
 async function parsePdf(pdfBytes: Uint8Array) {
   console.log('Parsing PDF');
 
@@ -92,23 +92,38 @@ async function parsePdf(pdfBytes: Uint8Array) {
     fullText += pageText + '\n';
   }
 
-  const regex = new RegExp(`${SEPARATOR}\\s+(.*)`, 'gm');
-  const match = fullText.match(regex);
+  const match = fullText.match(/Tartalomjegyzék\s+(.*)/gm);
   let matchText = match?.join('') ?? '';
-  matchText = matchText.replace(SEPARATOR, '').trim();
+  matchText = matchText.replace('Tartalomjegyzék', '').trim();
 
   const outputDiv = document.getElementById('output')!;
   outputDiv.innerText = "";
   outputDiv.innerText = matchText;
+  // console.log(matchText);
+
+  return `${matchText.slice(0, 100)}...`;
 }
 
 function App() {
+  const tableRef = useRef<HTMLTableElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
+  const titleRef = useRef<HTMLHeadingElement>(null);
   const [items, setItems] = useState<ListItem[]>([]);
   const outputRef = useRef<HTMLDivElement>(null);
 
   const onClick = async () => {
     const itemsArray = await getLatestFromUrl(proxyUrl('https://magyarkozlony.hu/'));
+    tableRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
     setItems(itemsArray)
+  }
+
+  const onRowLoaded = (title: string, previewText: string) => {
+    console.log('Viewing PDF:', title);
+    toast.success(`Preview: ${previewText}`);
+    if (titleRef.current) {
+      titleRef.current.innerText = title;
+    }
+    contentRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
   }
 
   const copyToClipboard = () => {
@@ -116,23 +131,61 @@ function App() {
       return;
     }
 
-    console.clear();
-
     const text = outputRef.current.innerText;
-    const splitText = text.replace(/(\d+\/2025)/g, '\n$1');
-    const lines = splitText.split('\n').filter(Boolean);
-    console.log(lines);
+    const splitText = text
+      .replace(/(\d+\/2025)/g, '\n$1')
+      .replace(/(\d+\/.évi)/g, '\n$1')
+      // .replace(/(\s\d+\s)/g, '\n$1')
+    ;
+    const lines = splitText.split('\n').filter((line) => !!line && !line.includes('Utasítások')).map(line => line.trim());
 
-    const arr = lines.map((line) => ({
-      col1: line.match(/(\d+\/2025)/g),
-      col2: "",
-      col3: "",
-      col4: "",
-    }));
-    console.log(arr);
+    const arr = lines.map((raw) => {
+      const cleaned = raw
+        .replace(/\t+/g, ' ') // replace tabs
+        .replace(/\n+/g, ' ') // replace line feeds
+        .replace(/\s+/g, ' ') // replace multiple spaces
+      ;
+      const line = cleaned.trim();
 
-    navigator.clipboard.writeText(text);
-    toast.success('Copied to clipboard');
+      let match = line.match(/^(.*?(?:rendelet|törvény|utasítás|módósítása|módosításáról|határozat))\s(.*)\s(\d+)/);
+
+      if (!match || match.length < 4) {
+        // guess its a law or something else?
+        match = line.match(/(\d+\.\sévi\s[A-Z]+\.\störvény)\s(.*)\s(\d*)$/);
+        if (!match?.length || match.length !== 4) {
+          console.error('Ooops, couldn\'t parse that! Probably an ugly PDF there...', raw);
+          return [raw, '', ''];
+        }
+        return [match[1], match[2], match[3]]
+      }
+
+      return [match[1], match[2], match[3]];
+    });
+
+    // Convert to HTML table
+    const htmlTable =
+      '<table border="1" cellpadding="4" cellspacing="0" style="border-collapse: collapse;">' +
+      arr.map(row =>
+        '<tr>' + row.map(cell => `<td>${cell}</td>`).join('') + '</tr>'
+      ).join('') +
+      '</table>';
+
+    // Copy to clipboard as HTML
+    navigator.clipboard.write([
+      new ClipboardItem({
+        "text/html": new Blob([htmlTable], { type: "text/html" }),
+        "text/plain": new Blob([htmlTable], { type: "text/plain" }) // fallback
+      })
+    ]).then(() => {
+      toast.success('Table copied to clipboard for pasting into an email\n- just press CTRL-V');
+      if (outputRef.current) {
+        outputRef.current.innerHTML = `<div style="max-width: 500px">${htmlTable}</div>`;
+      }
+    }).catch(err => {
+      const msg = `Copy failed: ${err}`;
+      toast.error(msg);
+      console.error(msg);
+    });
   }
 
   return (
@@ -149,8 +202,8 @@ function App() {
         <button onClick={onClick}>
           Fetch the latest from 'Magyar Közlöny'
         </button>
-        <div className="flex gap-12">
-          <table className='w-lg h-fit table-fixed'>
+        <div className="grid grid-col-1 xl:grid-cols-2 gap-12">
+          <table ref={tableRef} className='w-lg h-fit table-fixed'>
             <thead>
               <tr>
                 <td width={125}>Date</td>
@@ -160,7 +213,7 @@ function App() {
             </thead>
             <tbody>
               {items.length ? (
-                items.map((item) => <ItemRow key={crypto.randomUUID().slice(0, 8)} item={item} />)
+                items.map((item) => <ItemRow key={crypto.randomUUID().slice(0, 8)} item={item} onLoad={onRowLoaded} />)
               ) : (
                 <tr>
                   <td colSpan={3}>Empty - press the button above to load stuff</td>
@@ -168,12 +221,16 @@ function App() {
               )}
             </tbody>
           </table>
-          <div className='flex flex-col gap-8 items-center w-full'>
+          <div ref={contentRef} className='flex flex-col gap-8 items-center w-full'>
             <div className='font-bold border-b-1 border-slate-600 w-full'>Table of contents:</div>
             <button className='w-fit' onClick={copyToClipboard}>
-              Copy to clipboard for pasting into Excel
+              Copy as a table
             </button>
-            <div ref={outputRef} id="output" className="p-4 border rounded-lg w-[400px] max-h-[400px] overflow-y-scroll whitespace-pre-line">
+            <div className="flex flex-col gap-2">
+              <h2>Current document:</h2>
+              <h2 ref={titleRef}>-</h2>
+            </div>
+            <div ref={outputRef} id="output" className="p-4 border rounded-lg w-[600px] max-h-[400px] overflow-y-auto whitespace-pre-line">
               nothing yet - press 'Load' in a row
             </div>
           </div>
@@ -183,14 +240,15 @@ function App() {
   )
 }
 
-function ItemRow({ item }: { item: ListItem }) {
+function ItemRow({ item, onLoad }: { item: ListItem; onLoad: (title: string, previewText: string) => void }) {
   const onDownload = async (url: string | null) => {
     if (!url) {
       console.warn('No URL provided in', item);
       return;
     }
     const pdfBytes = await downloadPdf(url);
-    await parsePdf(pdfBytes);
+    const preview = await parsePdf(pdfBytes);
+    onLoad(item.title ?? '', preview);
   }
 
   return (

@@ -80,7 +80,7 @@ h1 {
 button {
   border-radius: 8px;
   border: 2px solid rgb(65, 64, 64);
-  margin: 8px;
+  margin: 2px;
   padding: 4px 8px;
   font-size: 1em;
   font-family: inherit;
@@ -102,6 +102,9 @@ button {
 
 .table-cell {
   @apply p-1;
+  & > button {
+    @apply ml-2;
+  }
 }
 
 table {

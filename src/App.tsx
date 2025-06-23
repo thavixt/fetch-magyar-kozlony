@@ -2,6 +2,8 @@ import { useRef, useState } from 'react';
 import { toast } from 'sonner';
 // @ts-expect-error mehhhhh
 import * as pdfjsLib from 'pdfjs-dist/legacy/build/pdf';
+import type { PDFDocumentLoadingTask } from 'pdfjs-dist/types/src/pdf.d';
+import type { TextItem } from 'pdfjs-dist/types/src/display/api.d';
 import { Toaster } from './components/ui/sonner';
 import { cn } from './lib/utils';
 
@@ -12,9 +14,21 @@ interface ListItem {
   view: string;
 }
 
+interface Entry {
+  id: string;
+  name: string;
+  num: string;
+}
+
 const proxyUrl = (url: string) => `https://corsproxy.io/?${url}`;
 
 const PLACEHOLDER_TEXT = '< not found >';
+const LINE_BREAK = '<LINE_BREAK>';
+const HEADING = 'M A G Y A R';
+
+function assertIsPdfTextItem(item: TextItem | unknown): item is TextItem {
+  return typeof (item as TextItem).hasEOL === 'boolean';
+}
 
 async function getLatestFromUrl(url: string): Promise<ListItem[]> {
   console.log('Fetching items from ', url);
@@ -86,30 +100,63 @@ async function downloadPdf(url: string): Promise<Uint8Array> {
   return downloadPdfPromise;
 }
 
-async function parsePdf(pdfBytes: Uint8Array) {
+async function parsePdf(pdfBytes: Uint8Array): Promise<Entry[]> {
   console.log('Parsing PDF');
 
-  const loadingTask = pdfjsLib.getDocument({ data: pdfBytes });
+  const loadingTask = pdfjsLib.getDocument({ data: pdfBytes }) as PDFDocumentLoadingTask;
   const pdf = await loadingTask.promise;
-  let fullText = '';
+
+  let record = false;
+  const blocks: Array<string> = [];
 
   for (let i = 1; i <= pdf.numPages; i++) {
     const page = await pdf.getPage(i);
     const content = await page.getTextContent();
-    const pageText = content.items.map((item: { str: string }) => item.str).join(' ');
-    fullText += pageText + '\n';
+
+    content.items.forEach((item) => {
+      if (!assertIsPdfTextItem(item)) {
+        return;
+      }
+      if (!item.str.trim()) {
+        return;
+      }
+
+      if (item.str === 'Tartalomjegyzék') {
+        record = true;
+        return;
+      }
+      if (!record || item.height === 10) {
+        record = false;
+        return;
+      }
+
+      const text = item.str.replace(/^(\d{4})$/, `$1${LINE_BREAK}`);
+      blocks.push(`${text} `);
+    });
   }
 
-  const match = fullText.match(/Tartalomjegyzék\s+(.*)/gm);
-  let matchText = match?.join('') ?? '';
-  matchText = matchText.replace('Tartalomjegyzék', '').trim();
+  const entries: Entry[] = [{ id: '', name: '', num: '' }];
+  let entryIndex = -1;
+  let hadLineBreak = true;
 
-  const outputDiv = document.getElementById('output')!;
-  outputDiv.innerText = "";
-  outputDiv.innerText = matchText;
-  // console.log(matchText);
+  for (let i = 0; i < blocks.length; i++) {
+    if (blocks[i].includes(LINE_BREAK)) {
+      hadLineBreak = true;
+      entries[entryIndex].num = blocks[i].replace(LINE_BREAK, '');
+      continue;
+    }
 
-  return `${matchText.slice(0, 100)}...`;
+    if (hadLineBreak) {
+      hadLineBreak = false;
+      entryIndex++;
+      entries[entryIndex] = { id: '', name: '', num: '' };
+      entries[entryIndex].id = blocks[i];
+    } else {
+      entries[entryIndex].name += blocks[i];
+    }
+  }
+
+  return entries.filter(e => e.id.trim() !== HEADING);
 }
 
 function App() {
@@ -118,6 +165,7 @@ function App() {
   const titleRef = useRef<HTMLHeadingElement>(null);
   const [items, setItems] = useState<ListItem[]>([]);
   const outputRef = useRef<HTMLDivElement>(null);
+  const [currentPDFEntries, setCurrentPDFEntries] = useState<Entry[]>([]);
 
   const onClick = async () => {
     const itemsArray = await getLatestFromUrl(proxyUrl('https://magyarkozlony.hu/'));
@@ -125,12 +173,21 @@ function App() {
     setItems(itemsArray)
   }
 
-  const onRowLoaded = (title: string, previewText: string) => {
-    console.log('Viewing PDF:', title);
-    toast.success(`Preview: ${previewText}`);
+  const onRowLoaded = (title: string, entries: Entry[]) => {
+    console.log('Loaded PDF:', title);
+    toast.success(`Preview: ${entries[0].id} ${entries[0].name} ...`);
     if (titleRef.current) {
       titleRef.current.innerText = title;
     }
+    setCurrentPDFEntries(entries);
+  
+    if (!outputRef.current) {
+      return;
+    }
+    outputRef.current.innerText = `${entries.map(e => (
+      `${e.id} ${e.name} ${e.num}\n`
+    ))}`;
+
     contentRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
   }
 
@@ -139,42 +196,15 @@ function App() {
       return;
     }
 
-    const text = outputRef.current.innerText;
-    const splitText = text
-      .replace(/(\d+\/2025)/g, '\n$1')
-      .replace(/(\d+\/.évi)/g, '\n$1')
-      // .replace(/(\s\d+\s)/g, '\n$1')
-      ;
-    const lines = splitText.split('\n').filter((line) => !!line && !line.includes('Utasítások')).map(line => line.trim());
-
-    const arr = lines.map((raw) => {
-      const cleaned = raw
-        .replace(/\t+/g, ' ') // replace tabs
-        .replace(/\n+/g, ' ') // replace line feeds
-        .replace(/\s+/g, ' ') // replace multiple spaces
-        ;
-      const line = cleaned.trim();
-
-      let match = line.match(/^(.*?(?:rendelet|törvény|utasítás|módósítása|módosításáról|határozat))\s(.*)\s(\d+)/);
-
-      if (!match || match.length < 4) {
-        // guess its a law or something else?
-        match = line.match(/(\d+\.\sévi\s[A-Z]+\.\störvény)\s(.*)\s(\d*)$/);
-        if (!match?.length || match.length !== 4) {
-          console.error('Ooops, couldn\'t parse that! Probably an ugly PDF there...', raw);
-          return [raw, '', ''];
-        }
-        return [match[1], match[2], match[3]]
-      }
-
-      return [match[1], match[2], match[3]];
-    });
-
     // Convert to HTML table
     const htmlTable =
       '<table border="1" cellpadding="4" cellspacing="0" style="border-collapse: collapse;">' +
-      arr.map(row =>
-        '<tr>' + row.map(cell => `<td>${cell}</td>`).join('') + '</tr>'
+      currentPDFEntries.map(entry =>
+        `<tr>
+          <td>${entry.id}</td>
+          <td>${entry.name}</td>
+          <td>${entry.num}</td>
+        </tr>`.trim()
       ).join('') +
       '</table>';
 
@@ -185,12 +215,12 @@ function App() {
         "text/plain": new Blob([htmlTable], { type: "text/plain" }) // fallback
       })
     ]).then(() => {
-      toast.success('Table copied to clipboard for pasting into an email\n- just press CTRL-V');
+      toast.success('Table copied to clipboard for pasting into an email - press CTRL-V in the email body');
       if (outputRef.current) {
         outputRef.current.innerHTML = `<div style="max-width: 500px">${htmlTable}</div>`;
       }
     }).catch(err => {
-      const msg = `Copy failed: ${err}`;
+      const msg = `Attempting to copy contents failed: ${err}`;
       toast.error(msg);
       console.error(msg);
     });
@@ -250,15 +280,15 @@ function App() {
   )
 }
 
-function ItemRow({ first, item, onLoad }: { first: boolean; item: ListItem; onLoad: (title: string, previewText: string) => void }) {
+function ItemRow({ first, item, onLoad }: { first: boolean; item: ListItem; onLoad: (title: string, entries: Entry[]) => void }) {
   const onDownload = async (url: string) => {
     if (!url) {
       console.error('No URL provided for item', item);
       return;
     }
     const pdfBytes = await downloadPdf(url);
-    const preview = await parsePdf(pdfBytes);
-    onLoad(item.title ?? '', preview);
+    const entries = await parsePdf(pdfBytes);
+    onLoad(item.title ?? '', entries);
   }
 
   return (

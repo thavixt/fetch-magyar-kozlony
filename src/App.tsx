@@ -1,165 +1,11 @@
 import { useRef, useState } from 'react';
 import { toast } from 'sonner';
-// @ts-expect-error mehhhhh
-import * as pdfjsLib from 'pdfjs-dist/legacy/build/pdf';
-import type { PDFDocumentLoadingTask } from 'pdfjs-dist/types/src/pdf.d';
-import type { TextItem } from 'pdfjs-dist/types/src/display/api.d';
 import { Toaster } from './components/ui/sonner';
-import { cn } from './lib/utils';
+import { type Entry, type ListItem } from './types';
+import { getLatestFromUrl } from './utils/download';
+import { ItemRow } from './components/ItemRow';
 
-interface ListItem {
-  date: string;
-  title: string;
-  download: string;
-  view: string;
-}
-
-interface Entry {
-  id: string;
-  name: string;
-  num: string;
-}
-
-const proxyUrl = (url: string) => `https://corsproxy.io/?${url}`;
-
-const PLACEHOLDER_TEXT = '< not found >';
-const LINE_BREAK = '<LINE_BREAK>';
-const HEADING = 'M A G Y A R';
-
-function assertIsPdfTextItem(item: TextItem | unknown): item is TextItem {
-  return typeof (item as TextItem).hasEOL === 'boolean';
-}
-
-async function getLatestFromUrl(url: string): Promise<ListItem[]> {
-  console.log('Fetching items from ', url);
-
-  const itemsPromise = new Promise<ListItem[]>((resolve, reject) => {
-    (async () => {
-      try {
-        const response = await fetch(url);
-        if (!response.ok) {
-          throw new Error(`Failed to fetch HTML: ${response.statusText}`);
-        }
-        const html = await response.text();
-        const parser = new DOMParser();
-        const doc = parser.parseFromString(html, 'text/html');
-
-        const fresh = doc.querySelector('.fresh-row > div[itemscope]');
-        const rest = doc.querySelectorAll('.journal-row > div[itemscope]');
-        const items = [fresh, ...rest];
-        const itemsArray = Array.from(items).filter(Boolean) as Element[];
-
-        const result = itemsArray.map(item => {
-          const date = (item.querySelector('meta[itemprop=datePublished]')?.getAttribute('content') ?? PLACEHOLDER_TEXT).trim();
-          const title = (item.querySelector('b[itemprop=name]')?.textContent ?? PLACEHOLDER_TEXT).trim();
-          const download = item.querySelector('a[href*="letoltes"]')?.getAttribute('href') ?? '';
-          const view = item.querySelector('a[href*="megtekintes"]')?.getAttribute('href') ?? '';
-          return { date, title, download, view };
-        });
-        resolve(result);
-      } catch (error) {
-        reject(error);
-      }
-    })();
-  });
-
-  toast.promise<ListItem[]>(itemsPromise, {
-    loading: "Loading stuff...",
-    success: "Loaded latest items",
-  });
-
-  return itemsPromise;
-}
-
-async function downloadPdf(url: string): Promise<Uint8Array> {
-  console.log('Download PDF from:', url);
-
-  const downloadPdfPromise = new Promise<Uint8Array>((resolve) => {
-    (async function () {
-      const response = await fetch(proxyUrl(url));
-      if (!response.ok) {
-        throw new Error(`Failed to fetch PDF: ${response.statusText}`);
-      }
-      const contentType = response.headers.get('content-type');
-      if (!contentType?.includes('pdf')) {
-        const text = await response.text();
-        console.error('Not a PDF! Content-Type:', contentType, 'First 200 chars:', text.slice(0, 200));
-        throw new Error('Fetched file is not a PDF');
-      }
-      const arrayBuffer = await response.arrayBuffer() as Uint8Array;
-      resolve(arrayBuffer);
-    })();
-  })
-
-  toast.promise<Uint8Array>(downloadPdfPromise, {
-    loading: "Loading PDF file...",
-    // success: "Processed PDF file",
-    error: 'Oops, something went wrong :(',
-  });
-
-  return downloadPdfPromise;
-}
-
-async function parsePdf(pdfBytes: Uint8Array): Promise<Entry[]> {
-  console.log('Parsing PDF');
-
-  const loadingTask = pdfjsLib.getDocument({ data: pdfBytes }) as PDFDocumentLoadingTask;
-  const pdf = await loadingTask.promise;
-
-  let record = false;
-  const blocks: Array<string> = [];
-
-  for (let i = 1; i <= pdf.numPages; i++) {
-    const page = await pdf.getPage(i);
-    const content = await page.getTextContent();
-
-    content.items.forEach((item) => {
-      if (!assertIsPdfTextItem(item)) {
-        return;
-      }
-      if (!item.str.trim()) {
-        return;
-      }
-
-      if (item.str === 'Tartalomjegyzék') {
-        record = true;
-        return;
-      }
-      if (!record || item.height === 10) {
-        record = false;
-        return;
-      }
-
-      const text = item.str.replace(/^(\d{4})$/, `$1${LINE_BREAK}`);
-      blocks.push(`${text} `);
-    });
-  }
-
-  const entries: Entry[] = [{ id: '', name: '', num: '' }];
-  let entryIndex = -1;
-  let hadLineBreak = true;
-
-  for (let i = 0; i < blocks.length; i++) {
-    if (blocks[i].includes(LINE_BREAK)) {
-      hadLineBreak = true;
-      entries[entryIndex].num = blocks[i].replace(LINE_BREAK, '');
-      continue;
-    }
-
-    if (hadLineBreak) {
-      hadLineBreak = false;
-      entryIndex++;
-      entries[entryIndex] = { id: '', name: '', num: '' };
-      entries[entryIndex].id = blocks[i];
-    } else {
-      entries[entryIndex].name += blocks[i];
-    }
-  }
-
-  return entries.filter(e => e.id.trim() !== HEADING);
-}
-
-function App() {
+export default function App() {
   const tableRef = useRef<HTMLTableElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   const titleRef = useRef<HTMLHeadingElement>(null);
@@ -168,7 +14,7 @@ function App() {
   const [currentPDFEntries, setCurrentPDFEntries] = useState<Entry[]>([]);
 
   const onClick = async () => {
-    const itemsArray = await getLatestFromUrl(proxyUrl('https://magyarkozlony.hu/'));
+    const itemsArray = await getLatestFromUrl('https://magyarkozlony.hu/');
     tableRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
     setItems(itemsArray)
   }
@@ -176,11 +22,12 @@ function App() {
   const onRowLoaded = (title: string, entries: Entry[]) => {
     console.log('Loaded PDF:', title);
     toast.success(`Preview: ${entries[0].id} ${entries[0].name} ...`);
+
     if (titleRef.current) {
       titleRef.current.innerText = title;
     }
     setCurrentPDFEntries(entries);
-  
+
     if (!outputRef.current) {
       return;
     }
@@ -279,28 +126,3 @@ function App() {
     </>
   )
 }
-
-function ItemRow({ first, item, onLoad }: { first: boolean; item: ListItem; onLoad: (title: string, entries: Entry[]) => void }) {
-  const onDownload = async (url: string) => {
-    if (!url) {
-      console.error('No URL provided for item', item);
-      return;
-    }
-    const pdfBytes = await downloadPdf(url);
-    const entries = await parsePdf(pdfBytes);
-    onLoad(item.title ?? '', entries);
-  }
-
-  return (
-    <tr className={cn('table-row', { 'font-bold': first })}>
-      <td className='table-cell truncate'>{item.date}</td>
-      <td className='table-cell truncate'>{item.title}</td>
-      <td className='table-cell truncate'>
-        <a href={item.view} target='__blank'>View PDF</a>
-        <button onClick={() => onDownload(item.download)}>Load</button>
-      </td>
-    </tr>
-  )
-}
-
-export default App

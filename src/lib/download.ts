@@ -66,7 +66,7 @@ export async function downloadPdf(url: string): Promise<Uint8Array> {
   })
 
   toast.promise<Uint8Array>(downloadPdfPromise, {
-    loading: "PDF letöltése ...",
+    loading: "Dokumentum letöltése ...",
     error: 'Ooopsz, valami félrement',
   });
 

@@ -128,29 +128,45 @@ a:hover {
   text-decoration-line: underline;
 }
 
+:root {
+  /* --blinkColor: #b4f5c2; */
+  --blinkColor: #2cca4c;
+}
+
 @-webkit-keyframes borderBlink {    
   from, to {    
-      border-color: transparent    
-  }    
+      border-color: transparent;
+      /* background-color: transparent; */
+      opacity: 1;
+  }
   50% {    
-      border-color: black    
-  }    
-}    
+      border-color: var(--blinkColor);
+      /* background-color: var(--blinkColor); */
+      opacity: 0.5;
+  }
+}
 @keyframes borderBlink {    
   from, to {    
-      border-color: transparent    
-  }    
+      border-color: transparent;
+      /* background-color: transparent; */
+      opacity: 1;
+  }
   50% {    
-      border-color: black    
-  }    
+      border-color: var(--blinkColor);
+      /* background-color: var(--blinkColor); */
+      opacity: 0.5;
+  }
 }
 .bordered {
-  border: 3px solid skyblue;
+  border: 3px solid transparent;
   border-radius: 16px;
-  border-color: transparent;
+  /* background-color: transparent; */
+  opacity: 1;
+  padding: 1em;
 }
 .borderedBlink {   
-  animation: borderBlink 1s ease-out; 
+  animation: borderBlink 0.5s ease-out;
+  opacity: 1;
 }
 
 @theme inline {

@@ -14,7 +14,7 @@ const getUrl = () => {
   if (import.meta.env.DEV) {
     return "http://localhost:8080/api/gemini";
   }
-  return "http://personal.komlosidev.net/api/gemini";
+  return "https://personal.komlosidev.net/api/gemini";
 }
 
 export interface GeminiResponse { code: number; text: string };

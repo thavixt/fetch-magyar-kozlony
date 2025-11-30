@@ -125,9 +125,9 @@ export default function App() {
             </div>
           </div>
 
-          <div className={`grid grid-cols-1 grid-rows-[auto_auto]`}>
-            <div className="flex flex-col gap-2 items-center bordered" ref={docBlinkRef}>
-              <div className='font-bold'>Aktuális dokumentum:</div>
+          <div className={`grid grid-cols-1 grid-rows-[auto_auto] gap-4`}>
+            <div className="flex flex-col items-center bordered" ref={docBlinkRef}>
+              <div>Aktuális dokumentum:</div>
               <div className='font-bold' ref={titleRef}></div>
               <button className='w-fit' onClick={onCopyToClipboard} disabled={!(currentPDFEntries.length)}>
                 Másolás táblázatként
@@ -137,7 +137,7 @@ export default function App() {
               </div>
             </div>
             {ai ? (
-              <div ref={aiBlinkRef} className='bordered'>
+              <div ref={aiBlinkRef} className='flex flex-col items-center bordered'>
                 <div className='font-bold'>AI összefoglaló:</div>
                 <div id="ai-overview" ref={aiRef} className='w-[600px] max-h-[400px] overflow-y-auto whitespace-pre-line text-xs' />
               </div>) : <div />}

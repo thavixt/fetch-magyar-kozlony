@@ -3,7 +3,6 @@
 
 @custom-variant dark (&:is(.dark *));
 
-
 :root {
   font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
   line-height: 1.5;
@@ -70,6 +69,7 @@ body {
   place-items: center;
   min-width: 320px;
   min-height: 100vh;
+  background-color: aliceblue;
 }
 
 h1 {
@@ -86,6 +86,9 @@ button {
   font-family: inherit;
   background-color: #0a0a0a;
   color: whitesmoke;
+  &:disabled {
+    opacity: 0.5;
+  }
   &:not(:disabled) {
     cursor: pointer;
     transition: border-color 0.25s;
@@ -119,6 +122,35 @@ table {
   td:not(:last-child) {
     @apply border-r border-slate-400;
   }
+}
+
+a:hover {
+  text-decoration-line: underline;
+}
+
+@-webkit-keyframes borderBlink {    
+  from, to {    
+      border-color: transparent    
+  }    
+  50% {    
+      border-color: black    
+  }    
+}    
+@keyframes borderBlink {    
+  from, to {    
+      border-color: transparent    
+  }    
+  50% {    
+      border-color: black    
+  }    
+}
+.bordered {
+  border: 3px solid skyblue;
+  border-radius: 16px;
+  border-color: transparent;
+}
+.borderedBlink {   
+  animation: borderBlink 1s ease-out; 
 }
 
 @theme inline {

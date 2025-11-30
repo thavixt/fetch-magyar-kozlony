@@ -5,7 +5,7 @@ import { PLACEHOLDER_TEXT } from "./const";
 const proxyUrl = (url: string) => `https://corsproxy.io/?${url}`;
 
 export async function getLatestFromUrl(url: string): Promise<ListItem[]> {
-  console.log('Fetching items from ', url);
+  console.debug('Fetching items from ', url);
 
   const itemsPromise = new Promise<ListItem[]>((resolve, reject) => {
     (async () => {
@@ -38,15 +38,15 @@ export async function getLatestFromUrl(url: string): Promise<ListItem[]> {
   });
 
   toast.promise<ListItem[]>(itemsPromise, {
-    loading: "Loading stuff...",
-    success: "Loaded latest items",
+    loading: "Letöltés ...",
+    error: 'Ooopsz, valami félrement',
   });
 
   return itemsPromise;
 }
 
 export async function downloadPdf(url: string): Promise<Uint8Array> {
-  console.log('Download PDF from:', url);
+  console.debug('Download PDF from:', url);
 
   const downloadPdfPromise = new Promise<Uint8Array>((resolve) => {
     (async function () {
@@ -60,15 +60,14 @@ export async function downloadPdf(url: string): Promise<Uint8Array> {
         console.error('Not a PDF! Content-Type:', contentType, 'First 200 chars:', text.slice(0, 200));
         throw new Error('Fetched file is not a PDF');
       }
-      const arrayBuffer = await response.arrayBuffer() as Uint8Array;
+      const arrayBuffer = await response.arrayBuffer() as unknown as Uint8Array;
       resolve(arrayBuffer);
     })();
   })
 
   toast.promise<Uint8Array>(downloadPdfPromise, {
-    loading: "Loading PDF file...",
-    // success: "Processed PDF file",
-    error: 'Oops, something went wrong :(',
+    loading: "PDF letöltése ...",
+    error: 'Ooopsz, valami félrement',
   });
 
   return downloadPdfPromise;

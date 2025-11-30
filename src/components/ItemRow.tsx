@@ -1,9 +1,15 @@
 import { cn } from "@/lib/utils";
 import type { Entry, ListItem } from "@/types";
-import { downloadPdf } from "@/utils/download";
-import { parsePdf } from "@/utils/parse";
+import { downloadPdf } from "@/lib/download";
+import { parsePdf } from "@/lib/parse";
 
-export function ItemRow({ first, item, onLoad }: { first: boolean; item: ListItem; onLoad: (title: string, entries: Entry[]) => void }) {
+interface ItemRowProps {
+  isCurrent: boolean;
+  item: ListItem;
+  onLoad: (title: string, entries: Entry[][]) => void
+}
+
+export function ItemRow({ item, onLoad, isCurrent }: ItemRowProps) {
   const onDownload = async (url: string) => {
     if (!url) {
       console.error('No URL provided for item', item);
@@ -15,12 +21,12 @@ export function ItemRow({ first, item, onLoad }: { first: boolean; item: ListIte
   }
 
   return (
-    <tr className={cn('table-row', { 'font-bold': first })}>
+    <tr className={cn('table-row', { 'font-bold': isCurrent })}>
       <td className='table-cell truncate'>{item.date}</td>
       <td className='table-cell truncate'>{item.title}</td>
       <td className='table-cell truncate'>
-        <a href={item.view} target='__blank'>View PDF</a>
-        <button onClick={() => onDownload(item.download)}>Load</button>
+        <button onClick={() => onDownload(item.download)} disabled={isCurrent}>Betöltés</button>
+        <a href={item.view} target='__blank' className="ml-2">PDF</a>
       </td>
     </tr>
   )

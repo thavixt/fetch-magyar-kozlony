@@ -8,35 +8,54 @@ export const setAiEnabled = (enabled: boolean) => {
   } else {
     window.localStorage.setItem(LOCALSTORAGE_KEY, "1");
   }
-}
+};
 
 const getUrl = () => {
   if (import.meta.env.DEV) {
     return "http://localhost:8080/api/gemini";
   }
   return "https://personal.komlosidev.net/api/gemini";
+};
+
+export interface GeminiResponse {
+  code: number;
+  text: string;
 }
 
-export interface GeminiResponse { code: number; text: string };
-
 async function gemini(text: string): Promise<GeminiResponse> {
-  const res = await fetch(getUrl(), {
-    method: 'POST',
-    headers: {
-      'Accept': 'application/json',
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({ text })
-  });
-  const json = await res.json() as GeminiResponse;
+  let res;
+  try {
+    res = await fetch(getUrl(), {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ text }),
+    });
+  } catch {
+    throw new Error("Network error");
+  }
+  const json = (await res.json()) as GeminiResponse;
   if (json.code !== 0) {
     console.error(json);
+    throw new Error(`Invalid response - error code ${json.code}`);
   }
   return json;
 }
 
-export async function getAiOverview(lines: Entry[]): Promise<GeminiResponse> {
-  const payload = lines.map(l => `${l.num}\n${l.name}\n${l.id}`).join('\n\n');
+export async function getAiOverview(
+  lines: Entry[],
+): Promise<GeminiResponse | null> {
+  const payload = lines.map((l) => `${l.num}\n${l.name}\n${l.id}`).join("\n\n");
 
-  return gemini(`Itt egy lista az aktuális Magyar közlönyből, írj egy rövid összefoglalót:\n\n${payload}`);
+  try {
+    const response = await gemini(
+      `Itt egy lista az aktuális Magyar közlönyből, írj egy rövid összefoglalót:\n(a fonto szavakat **emeld ki**, hogy gyorsan értelmezhető legyen)\n\n${payload}`,
+    );
+    return response;
+  } catch (e) {
+    console.error(e);
+    return null;
+  }
 }

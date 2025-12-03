@@ -1,4 +1,3 @@
-import type { Entry } from "@/types";
 import { toast } from "sonner";
 
 export async function copyToClipboard(entries: Entry[][]): Promise<string> {

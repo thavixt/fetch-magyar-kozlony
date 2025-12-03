@@ -12,7 +12,7 @@ export interface Entry {
 }
 
 export const DocType = {
-  KOZLONY: 'magyar_kozlony',
-  ERTESITO: 'hivatalos_ertesito',
+  KOZLONY: "magyar_kozlony",
+  ERTESITO: "hivatalos_ertesito",
 } as const;
-export type DocType = typeof DocType[keyof typeof DocType];
+export type DocType = (typeof DocType)[keyof typeof DocType];

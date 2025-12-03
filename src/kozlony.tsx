@@ -7,13 +7,13 @@ import { getAiOverview, isAiEnabled, setAiEnabled } from "./lib/gemini";
 import { copyToClipboard } from "./lib/clipboard";
 import { Button } from "./components/ui/button";
 import type { Entry, ListItem } from "./types";
-import { MagyarKozlonyApi } from "./lib/magyarkozlony";
+// import { MagyarKozlonyApi } from "./lib/magyarkozlony";
 import { Loader } from "./components/ui/loader";
 import { sleep, splitRandom } from "./lib/utils";
 import Markdown from "react-markdown";
 
 export function MagyarKozlony() {
-  const api = useRef<MagyarKozlonyApi>(new MagyarKozlonyApi());
+  // const api = useRef<MagyarKozlonyApi>(new MagyarKozlonyApi());
 
   const tableRef = useRef<HTMLTableElement>(null);
   const titleRef = useRef<HTMLHeadingElement>(null);

@@ -29,7 +29,7 @@ export function ItemRow({
   };
 
   return (
-    <tr className={cn("table-row", { "font-bold": isCurrent })}>
+    <tr className={cn("table-row", { "font-extrabold": isCurrent })}>
       <td className="table-cell truncate">{item.date}</td>
       <td className="table-cell truncate">{item.title}</td>
       <td className="table-cell truncate">

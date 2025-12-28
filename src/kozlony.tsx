@@ -3,7 +3,12 @@ import { toast } from "sonner";
 import { Toaster } from "./components/ui/sonner";
 import { getLatestFromUrl } from "./lib/download";
 import { ItemRow } from "./components/ItemRow";
-import { getAiOverview, isAiEnabled, setAiEnabled } from "./lib/gemini";
+import {
+  getAiOverview,
+  getAsTable,
+  isAiEnabled,
+  setAiEnabled,
+} from "./lib/gemini";
 import { copyToClipboard } from "./lib/clipboard";
 import { Button } from "./components/ui/button";
 import type { Entry, ListItem } from "./types";
@@ -144,8 +149,15 @@ export function MagyarKozlony() {
       return;
     }
 
-    const htmlTable = await copyToClipboard(currentPDFEntries);
-    outputRef.current.innerHTML = `<div style="max-width: 500px">${htmlTable}</div>`;
+    const htmlTable = await getAsTable(currentPDFEntries);
+    if (htmlTable) {
+      outputRef.current.innerHTML = `<div style="max-width: 500px">${htmlTable}</div>`;
+      setTimeout(() => {
+        outputRef.current?.scrollIntoView({ behavior: "smooth" });
+        outputRef.current?.classList.add("borderedBlink");
+      }, 250);
+      await copyToClipboard(htmlTable);
+    }
   };
 
   return (
@@ -230,7 +242,7 @@ export function MagyarKozlony() {
               <div
                 ref={outputRef}
                 id="output"
-                className="p-4 rounded-lg w-[600px] max-h-[300px] overflow-y-auto whitespace-pre-line text-xs bordered"
+                className="p-4 rounded-lg w-[600px] max-h-[300px] overflow-y-auto whitespace-pre-line text-xs bordered mb-2"
               />
               {docLoading ? (
                 <Loader rows={5} />
@@ -246,7 +258,7 @@ export function MagyarKozlony() {
             </div>
             {ai ? (
               <div>
-                <hr className="mb-6" />
+                <hr className="my-6" />
                 <div className="font-bold mb-2">AI összefoglaló:</div>
                 <div
                   ref={aiBlinkRef}

@@ -9,53 +9,48 @@ interface FooterLink {
 }
 
 interface PageProps {
-  title?: string;
+  title: string;
   subtitle?: string;
   footer?: FooterLink[];
 }
 
 export default function Layout({
   children,
-  title = "Magyar közlöny értelmező",
+  title,
   subtitle,
   footer = [],
 }: PropsWithChildren<PageProps>) {
   return (
     <Flex col>
       <header>
-        <h3>{title}</h3>
-        <h4>{subtitle}</h4>
+        <div className="flex flex-col items-center justify-center gap-2">
+          <h3>{title}</h3>
+        </div>
       </header>
-      <main className="min-h-screen flex flex-col md:grid md:grid-cols-[auto_1fr] md:grid-rows-1 gap-12">
+      <main className="min-h-screen flex flex-col md:grid md:grid-cols-[auto_1fr] md:grid-rows-1 gap-12 max-w-[1000px] m-auto">
         <NavLinks title="Információk:" />
         <div className="flex flex-col gap-12">
+          {subtitle ? (
+            <div className="text-gray-500 flex flex-col gap-2">
+              <span>{subtitle}</span>
+            </div>
+          ) : null}
           <div className="w-full px-12">{children}</div>
-          <p>
-            A <NavLink>Magyar Közlöny</NavLink> weboldala{" "}
-            <a rel="noreferrer" target="href" href="https://magyarkozlony.hu/">
-              itt található
-            </a>
-            .
-          </p>
         </div>
       </main>
       <footer>
-        {footer.map((item) => {
-          if (item.link) {
-            return (
-              <a href={item.link} rel="nooper" target="_blank">
-                {item.text}
-              </a>
-            );
-          }
-          return <div>{item.text}</div>;
-        })}
-        <a
-          href="https://github.com/thavixt/fetch-magyar-kozlony"
-          rel="nooper"
-          target="_blank">
-          github
-        </a>
+        <div className="flex flex-col items-start gap-1">
+          {footer.map((item) => {
+            if (item.link) {
+              return (
+                <NavLink key={item.link} link={item.link}>
+                  {item.text}
+                </NavLink>
+              );
+            }
+            return <div key={item.text}>{item.text}</div>;
+          })}
+        </div>
       </footer>
     </Flex>
   );

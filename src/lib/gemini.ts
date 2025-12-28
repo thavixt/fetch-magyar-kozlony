@@ -1,4 +1,5 @@
 import type { Entry } from "@/types";
+import { toast } from "sonner";
 
 const LOCALSTORAGE_KEY = "fmk-ai-disabled";
 export const isAiEnabled = () => !window.localStorage.getItem(LOCALSTORAGE_KEY);
@@ -58,4 +59,42 @@ export async function getAiOverview(
     console.error(e);
     return null;
   }
+}
+
+export async function getAsTable(entries: Entry[][]): Promise<string | null> {
+  const payload = entries
+    .map((entry) => {
+      return entry.map((e) => `${e.num}\n${e.name}\n${e.id}`);
+    })
+    .join("\n\n");
+
+  const formatPromise = new Promise<string>(async (res, rej) => {
+    try {
+      const response = await gemini(
+        `Itt egy lista az aktuális Magyar közlönyből, formázd a sorokat egy HTML <table>-ként, hogy könnyen tudjam egy email-be másolni:\n\n${payload}\n\n**Nagyon fontos, hogy csak a nyers <html>-t írd válaszként!**`,
+      );
+      let result = "";
+      result = response.text
+        .replaceAll("```", "")
+        .replaceAll("html", "")
+        .replaceAll(/\n{2,}/g, "\n")
+        .replaceAll(/\s{2,}/g, " ")
+        .trim();
+      if (!result) {
+        return null;
+      }
+      res(result);
+    } catch (e) {
+      console.error(e);
+      rej(e);
+    }
+  });
+
+  const { unwrap } = toast.promise(formatPromise, {
+    loading: "Táblázat formázása ...",
+    error: "Táblázat formázása nem sikerült :(",
+  });
+
+  const result = await unwrap();
+  return result;
 }

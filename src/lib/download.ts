@@ -14,7 +14,7 @@ export async function getLatestFromUrl(url: string): Promise<ListItem[]> {
   const itemsPromise = new Promise<ListItem[]>((resolve, reject) => {
     (async () => {
       try {
-        const response = await fetch(proxyUrl(url));
+        const response = await fetch(url);
         if (!response.ok) {
           throw new Error(`Failed to fetch HTML: ${response.statusText}`);
         }

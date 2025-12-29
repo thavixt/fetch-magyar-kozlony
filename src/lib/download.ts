@@ -2,11 +2,8 @@ import type { ListItem } from "@/types";
 import { toast } from "sonner";
 import { PLACEHOLDER_TEXT } from "./const";
 
-const proxyUrl = (url: string) => {
-  return import.meta.env.PROD
-    ? `https://komlosidev.net/api/proxy?url=${url}`
-    : `http://localhost:8080/api/proxy?url=${url}`;
-};
+const corsProxy = (url: string) => `https://corsproxy.io/?url=${url}`;
+// const serverProxy = (url: string) => `https://komlosidev.net/api/proxy?url=${url}`;
 
 export async function getLatestFromUrl(url: string): Promise<ListItem[]> {
   console.debug("Fetching items from ", url);
@@ -14,7 +11,7 @@ export async function getLatestFromUrl(url: string): Promise<ListItem[]> {
   const itemsPromise = new Promise<ListItem[]>((resolve, reject) => {
     (async () => {
       try {
-        const response = await fetch(url);
+        const response = await fetch(corsProxy(url));
         if (!response.ok) {
           throw new Error(`Failed to fetch HTML: ${response.statusText}`);
         }
@@ -55,7 +52,7 @@ export async function getLatestFromUrl(url: string): Promise<ListItem[]> {
 
   toast.promise<ListItem[]>(itemsPromise, {
     loading: "Letöltés ...",
-    error: "Ooopsz, valami félrement",
+    error: "Oopsz, valami félrement",
   });
 
   return itemsPromise;
@@ -64,11 +61,11 @@ export async function getLatestFromUrl(url: string): Promise<ListItem[]> {
 export async function downloadPdf(url: string): Promise<Uint8Array> {
   console.debug("Download PDF from:", url);
 
-  const downloadPdfPromise = new Promise<Uint8Array>((resolve) => {
+  const downloadPdfPromise = new Promise<Uint8Array>((resolve, reject) => {
     (async function () {
-      const response = await fetch(proxyUrl(url));
+      const response = await fetch(corsProxy(url));
       if (!response.ok) {
-        throw new Error(`Failed to fetch PDF: ${response.statusText}`);
+        reject(new Error(`Failed to fetch PDF: ${response.statusText}`));
       }
       const contentType = response.headers.get("content-type");
       if (!contentType?.includes("pdf")) {
@@ -79,7 +76,7 @@ export async function downloadPdf(url: string): Promise<Uint8Array> {
           "First 200 chars:",
           text.slice(0, 200),
         );
-        throw new Error("Fetched file is not a PDF");
+        reject(new Error("Fetched file is not a PDF"));
       }
       const arrayBuffer =
         (await response.arrayBuffer()) as unknown as Uint8Array;
@@ -89,7 +86,7 @@ export async function downloadPdf(url: string): Promise<Uint8Array> {
 
   toast.promise<Uint8Array>(downloadPdfPromise, {
     loading: "Dokumentum letöltése ...",
-    error: "Ooopsz, valami félrement",
+    error: "Oopsz, valami félrement",
   });
 
   return downloadPdfPromise;

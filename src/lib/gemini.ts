@@ -45,15 +45,22 @@ async function gemini(text: string): Promise<GeminiResponse> {
   return json;
 }
 
+const aiOverviewCache = new Map<string, string>();
 export async function getAiOverview(
+  cacheKey: string,
   lines: Entry[],
 ): Promise<GeminiResponse | null> {
   const payload = lines.map((l) => `${l.num}\n${l.name}\n${l.id}`).join("\n\n");
+  const cached = aiOverviewCache.get(cacheKey);
+  if (cached) {
+    return { code: 0, text: cached };
+  }
 
   try {
     const response = await gemini(
       `Itt egy lista az aktuális Magyar közlönyből, írj egy rövid összefoglalót:\n(a fonto szavakat **emeld ki**, hogy gyorsan értelmezhető legyen)\n\n${payload}`,
     );
+    aiOverviewCache.set(cacheKey, response.text);
     return response;
   } catch (e) {
     console.error(e);
@@ -61,12 +68,21 @@ export async function getAiOverview(
   }
 }
 
-export async function getAsTable(entries: Entry[][]): Promise<string | null> {
+const tableCache = new Map<string, string>();
+export async function getAsTable(
+  cacheKey: string,
+  entries: Entry[][],
+): Promise<string | null> {
   const payload = entries
     .map((entry) => {
       return entry.map((e) => `${e.num}\n${e.name}\n${e.id}`);
     })
     .join("\n\n");
+
+  const cached = tableCache.get(cacheKey);
+  if (cached) {
+    return cached;
+  }
 
   const formatPromise = new Promise<string>(async (res, rej) => {
     try {
@@ -83,6 +99,7 @@ export async function getAsTable(entries: Entry[][]): Promise<string | null> {
       if (!result) {
         return null;
       }
+      tableCache.set(cacheKey, result);
       res(result);
     } catch (e) {
       console.error(e);

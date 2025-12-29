@@ -9,7 +9,7 @@ export async function copyToClipboard(text: string): Promise<void> {
       }),
     ])
     .then(() => {
-      toast.success("Táblázat kimásolva - CTRL+V a beillesztéshez");
+      toast.success("Táblázat vágólapra másolva");
     })
     .catch((err) => {
       const msg = `Attempting to copy contents failed: ${err}`;

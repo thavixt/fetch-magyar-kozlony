@@ -6,10 +6,10 @@ import { MagyarKozlony } from "./kozlony.tsx";
 
 const footer = [
   { link: "https://magyarkozlony.hu/", text: "Magyar Közlöny weboldala" },
-  {
-    link: "https://github.com/thavixt/fetch-magyar-kozlony",
-    text: "Forráskód",
-  },
+  // {
+  //   link: "https://github.com/thavixt/fetch-magyar-kozlony",
+  //   text: "Forráskód",
+  // },
 ];
 
 createRoot(document.getElementById("root")!).render(

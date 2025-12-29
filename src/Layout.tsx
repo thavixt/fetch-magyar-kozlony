@@ -27,14 +27,15 @@ export default function Layout({
           <h3>{title}</h3>
         </div>
       </header>
-      <main className="min-h-screen flex flex-col md:grid md:grid-cols-[auto_1fr] md:grid-rows-1 gap-12 max-w-[1000px] m-auto">
-        <NavLinks title="Információk:" />
+      {/* <main className="min-h-screen flex flex-col md:grid md:grid-cols-[auto_1fr] md:grid-rows-1 gap-12 max-w-[1000px] m-auto items-center justify-center"> */}
+      <main className="min-h-screen flex flex-col gap-12 max-w-[1000px] m-auto items-center justify-center">
+        {/* <NavLinks title="Információk:" /> */}
         <div className="flex flex-col gap-12">
-          {subtitle ? (
+          {/* {subtitle ? (
             <div className="text-gray-500 flex flex-col gap-2">
               <span>{subtitle}</span>
             </div>
-          ) : null}
+          ) : null} */}
           <div className="w-full px-12">{children}</div>
         </div>
       </main>

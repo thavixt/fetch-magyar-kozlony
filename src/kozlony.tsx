@@ -19,7 +19,9 @@ import Markdown from "react-markdown";
 
 export function MagyarKozlony() {
   // const api = useRef<MagyarKozlonyApi>(new MagyarKozlonyApi());
+  const [loading, setLoading] = useState(false);
 
+  const topRef = useRef<HTMLDivElement>(null);
   const tableRef = useRef<HTMLTableElement>(null);
   const titleRef = useRef<HTMLHeadingElement>(null);
   const aiRef = useRef<HTMLDivElement>(null);
@@ -46,20 +48,24 @@ export function MagyarKozlony() {
   };
 
   const onLoadList = async () => {
+    setLoading(true);
     setTableLoading(true);
     tableBlinkRef.current?.classList.remove("borderedBlink");
     setItems([]);
     setCurrentPDFEntries([]);
     const itemsArray = await getLatestFromUrl("https://magyarkozlony.hu/");
     setItems(itemsArray);
+    await sleep();
     setTimeout(() => {
-      // tableBlinkRef.current?.scrollIntoView({ behavior: "smooth" });
+      topRef.current?.scrollIntoView({ behavior: "smooth" });
       tableBlinkRef.current?.classList.add("borderedBlink");
     }, 250);
     setTableLoading(false);
+    setLoading(false);
   };
 
   const onRowLoadStart = () => {
+    setLoading(true);
     setDocLoading(true);
     if (outputRef.current) {
       outputRef.current.innerText = "";
@@ -71,6 +77,7 @@ export function MagyarKozlony() {
 
   const onRowLoadEnd = async (title: string, entries: Entry[][]) => {
     console.debug("Loaded PDF:", title);
+    setLoading(true);
     outputRef.current?.classList.remove("borderedBlink");
     setDocLoading(true);
     setCurrent(title);
@@ -95,7 +102,7 @@ export function MagyarKozlony() {
         (async function () {
           setAiLoading(true);
           setAiOverviewMarkdownContent("");
-          const aiOverview = await getAiOverview(entries[0]);
+          const aiOverview = await getAiOverview(current, entries[0]);
           if (!aiOverview) {
             setAiLoading(false);
             setAiOverviewMarkdownContent("< Kérjük, próbálja meg később >");
@@ -131,6 +138,7 @@ export function MagyarKozlony() {
       });
     }
 
+    setLoading(false);
     if (!outputRef.current) {
       return;
     }
@@ -148,8 +156,8 @@ export function MagyarKozlony() {
     if (!outputRef.current || !currentPDFEntries.length) {
       return;
     }
-
-    const htmlTable = await getAsTable(currentPDFEntries);
+    setLoading(true);
+    const htmlTable = await getAsTable(current, currentPDFEntries);
     if (htmlTable) {
       outputRef.current.innerHTML = `<div style="max-width: 500px">${htmlTable}</div>`;
       setTimeout(() => {
@@ -158,13 +166,21 @@ export function MagyarKozlony() {
       }, 250);
       await copyToClipboard(htmlTable);
     }
+    setLoading(false);
   };
 
   return (
     <>
+      {loading ? (
+        <div
+          id="loading-overlay"
+          className="block w-screen h-screen fixed top-0 left-0 bg-black z-1000 opacity-50 cursor-wait"
+        />
+      ) : null}
+
       <Toaster position="top-right" />
 
-      <div className="flex flex-col gap-8 items-center w-full">
+      <div ref={topRef} className="flex flex-col gap-8 items-center w-full">
         <div className="pt-8 text-xs flex flex-col gap-2 p-2">
           <p>
             Kattints a{" "}

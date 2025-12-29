@@ -4,7 +4,8 @@ import { PLACEHOLDER_TEXT } from "./const";
 
 const corsProxy = (url: string) => `https://corsproxy.io/?url=${url}`;
 const serverProxy = (url: string) =>
-  `https://komlosidev.net/api/proxy?url=${url}`;
+  // `https://komlosidev.net/api/proxy?url=${url}`;
+  `http://localhost:8080/api/proxy?url=${url}`;
 
 export async function getLatestFromUrl(url: string): Promise<ListItem[]> {
   console.debug("Fetching items from ", url);
@@ -12,7 +13,7 @@ export async function getLatestFromUrl(url: string): Promise<ListItem[]> {
   const itemsPromise = new Promise<ListItem[]>((resolve, reject) => {
     (async () => {
       try {
-        const response = await fetch(corsProxy(url));
+        const response = await fetch(serverProxy(url));
         if (!response.ok) {
           throw new Error(`Failed to fetch HTML: ${response.statusText}`);
         }

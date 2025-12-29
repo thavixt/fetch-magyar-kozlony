@@ -3,7 +3,8 @@ import { toast } from "sonner";
 import { PLACEHOLDER_TEXT } from "./const";
 
 const corsProxy = (url: string) => `https://corsproxy.io/?url=${url}`;
-// const serverProxy = (url: string) => `https://komlosidev.net/api/proxy?url=${url}`;
+const serverProxy = (url: string) =>
+  `https://komlosidev.net/api/proxy?url=${url}`;
 
 export async function getLatestFromUrl(url: string): Promise<ListItem[]> {
   console.debug("Fetching items from ", url);
@@ -63,7 +64,7 @@ export async function downloadPdf(url: string): Promise<Uint8Array> {
 
   const downloadPdfPromise = new Promise<Uint8Array>((resolve, reject) => {
     (async function () {
-      const response = await fetch(url);
+      const response = await fetch(serverProxy(url));
       if (!response.ok) {
         reject(new Error(`Failed to fetch PDF: ${response.statusText}`));
       }

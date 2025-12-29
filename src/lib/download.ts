@@ -63,7 +63,7 @@ export async function downloadPdf(url: string): Promise<Uint8Array> {
 
   const downloadPdfPromise = new Promise<Uint8Array>((resolve, reject) => {
     (async function () {
-      const response = await fetch(corsProxy(url));
+      const response = await fetch(url);
       if (!response.ok) {
         reject(new Error(`Failed to fetch PDF: ${response.statusText}`));
       }

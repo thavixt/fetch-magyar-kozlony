@@ -7,7 +7,7 @@ const corsProxy = (url: string) => {
 };
 const serverProxy = (url: string) => {
   return import.meta.env.DEV
-    ? `http://localhost:8080/api/parsePdf?url=${url}`
+    ? `http://localhost:3000/api/parsePdf?url=${url}`
     : `https://komlosidev.net/api/parsePdf?url=${url}`;
 };
 

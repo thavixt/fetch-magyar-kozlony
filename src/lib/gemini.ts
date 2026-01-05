@@ -14,7 +14,7 @@ export const setAiEnabled = (enabled: boolean) => {
 
 const getUrl = () => {
   if (import.meta.env.DEV) {
-    return "http://localhost:8080/api/gemini";
+    return "http://localhost:3000/api/gemini";
   }
   return "https://personal.komlosidev.net/api/gemini";
 };

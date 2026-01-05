@@ -1,5 +1,6 @@
 import type { Entry } from "@/types";
 import { toast } from "sonner";
+import type { PDFEntry } from "./download";
 
 const LOCALSTORAGE_KEY = "fmk-ai-disabled";
 export const isAiEnabled = () => !window.localStorage.getItem(LOCALSTORAGE_KEY);
@@ -48,9 +49,9 @@ async function gemini(text: string): Promise<GeminiResponse> {
 const aiOverviewCache = new Map<string, string>();
 export async function getAiOverview(
   cacheKey: string,
-  lines: Entry[],
+  lines: PDFEntry[],
 ): Promise<GeminiResponse | null> {
-  const payload = lines.map((l) => `${l.num}\n${l.name}\n${l.id}`).join("\n\n");
+  const payload = lines.map((l) => `${l.title}\n${l.content}`).join("\n\n");
   const cached = aiOverviewCache.get(cacheKey);
   if (cached) {
     return { code: 0, text: cached };
@@ -69,7 +70,7 @@ export async function getAiOverview(
 }
 
 const tableCache = new Map<string, string>();
-export async function getAsTable(
+export async function getAsTableAi(
   cacheKey: string,
   entries: Entry[][],
 ): Promise<string | null> {

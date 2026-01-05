@@ -2,10 +2,14 @@ import type { ListItem } from "@/types";
 import { toast } from "sonner";
 import { PLACEHOLDER_TEXT } from "./const";
 
-const corsProxy = (url: string) => `https://corsproxy.io/?url=${url}`;
-const serverProxy = (url: string) =>
-  // `https://komlosidev.net/api/proxy?url=${url}`;
-  `http://localhost:8080/api/proxy?url=${url}`;
+const corsProxy = (url: string) => {
+  return `https://corsproxy.io/?url=${url}`;
+};
+const serverProxy = (url: string) => {
+  return import.meta.env.DEV
+    ? `http://localhost:8080/api/parsePdf?url=${url}`
+    : `https://komlosidev.net/api/parsePdf?url=${url}`;
+};
 
 export async function getLatestFromUrl(url: string): Promise<ListItem[]> {
   console.debug("Fetching items from ", url);
@@ -13,7 +17,9 @@ export async function getLatestFromUrl(url: string): Promise<ListItem[]> {
   const itemsPromise = new Promise<ListItem[]>((resolve, reject) => {
     (async () => {
       try {
-        const response = await fetch(serverProxy(url));
+        const headers = new Headers();
+        headers.append("Content-Type", "text/html");
+        const response = await fetch(corsProxy(url), { headers });
         if (!response.ok) {
           throw new Error(`Failed to fetch HTML: ${response.statusText}`);
         }
@@ -45,7 +51,7 @@ export async function getLatestFromUrl(url: string): Promise<ListItem[]> {
               ?.getAttribute("href") ?? "";
           return { date, title, download, view };
         });
-        resolve(result);
+        resolve(result.filter((e) => e.title.includes("Magyar Közlöny")));
       } catch (error) {
         reject(error);
       }
@@ -60,36 +66,29 @@ export async function getLatestFromUrl(url: string): Promise<ListItem[]> {
   return itemsPromise;
 }
 
-export async function downloadPdf(url: string): Promise<Uint8Array> {
-  console.debug("Download PDF from:", url);
+export interface PDFEntry {
+  title: string;
+  content: string;
+}
 
-  const downloadPdfPromise = new Promise<Uint8Array>((resolve, reject) => {
+export async function downloadPdf(url: string): Promise<PDFEntry[]> {
+  console.debug("Parse PDF from:", url);
+  const downloadPdfPromise = new Promise<PDFEntry[]>((resolve, reject) => {
     (async function () {
-      const response = await fetch(serverProxy(url));
-      if (!response.ok) {
-        reject(new Error(`Failed to fetch PDF: ${response.statusText}`));
+      const headers = new Headers();
+      headers.append("Content-Type", "application/json");
+      try {
+        const response = await fetch(serverProxy(url), { headers });
+        const parsedPdf = (await response.json()) as PDFEntry[];
+        resolve(parsedPdf);
+      } catch {
+        reject(new Error("Failed to download parsed PDF details"));
       }
-      const contentType = response.headers.get("content-type");
-      if (!contentType?.includes("pdf")) {
-        const text = await response.text();
-        console.error(
-          "Not a PDF! Content-Type:",
-          contentType,
-          "First 200 chars:",
-          text.slice(0, 200),
-        );
-        reject(new Error("Fetched file is not a PDF"));
-      }
-      const arrayBuffer =
-        (await response.arrayBuffer()) as unknown as Uint8Array;
-      resolve(arrayBuffer);
     })();
   });
-
-  toast.promise<Uint8Array>(downloadPdfPromise, {
-    loading: "Dokumentum letöltése ...",
+  toast.promise<PDFEntry[]>(downloadPdfPromise, {
+    loading: "Dokumentum betöltése ...",
     error: "Oopsz, valami félrement",
   });
-
   return downloadPdfPromise;
 }

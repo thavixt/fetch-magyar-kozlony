@@ -284,3 +284,16 @@ table {
 button:not(:disabled) {
   @apply cursor-pointer;
 }
+
+.borderedBlink {
+  border: 1px transparent solid;
+
+  animation: blink 0.6s;
+  animation-iteration-count: 2;
+}
+
+@keyframes blink {
+  50% {
+    border-color: #fff;
+  }
+}

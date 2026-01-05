@@ -1,21 +1,17 @@
 import { useRef, useState } from "react";
 import { toast } from "sonner";
 import { Toaster } from "./components/ui/sonner";
-import { getLatestFromUrl } from "./lib/download";
+import { getLatestFromUrl, type PDFEntry } from "./lib/download";
 import { ItemRow } from "./components/ItemRow";
-import {
-  getAiOverview,
-  getAsTable,
-  isAiEnabled,
-  setAiEnabled,
-} from "./lib/gemini";
+import { getAiOverview, isAiEnabled, setAiEnabled } from "./lib/gemini";
 import { copyToClipboard } from "./lib/clipboard";
 import { Button } from "./components/ui/button";
-import type { Entry, ListItem } from "./types";
+import type { ListItem } from "./types";
 // import { MagyarKozlonyApi } from "./lib/magyarkozlony";
 import { Loader } from "./components/ui/loader";
 import { sleep, splitRandom } from "./lib/utils";
 import Markdown from "react-markdown";
+import { getAsTable } from "./lib/parse";
 
 export function MagyarKozlony() {
   // const api = useRef<MagyarKozlonyApi>(new MagyarKozlonyApi());
@@ -33,7 +29,7 @@ export function MagyarKozlony() {
 
   const [current, setCurrent] = useState("");
   const [items, setItems] = useState<ListItem[]>([]);
-  const [currentPDFEntries, setCurrentPDFEntries] = useState<Entry[][]>([]);
+  const [currentPDFEntries, setCurrentPDFEntries] = useState<PDFEntry[]>([]);
   const [ai, setAi] = useState(isAiEnabled());
 
   const [tableLoading, setTableLoading] = useState(false);
@@ -48,10 +44,11 @@ export function MagyarKozlony() {
   };
 
   const onLoadList = async () => {
-    setLoading(true);
     setTableLoading(true);
-    tableBlinkRef.current?.classList.remove("borderedBlink");
+    setLoading(true);
+    setCurrent("");
     setItems([]);
+    tableBlinkRef.current?.classList.remove("borderedBlink");
     setCurrentPDFEntries([]);
     const itemsArray = await getLatestFromUrl("https://magyarkozlony.hu/");
     setItems(itemsArray);
@@ -75,7 +72,7 @@ export function MagyarKozlony() {
     }
   };
 
-  const onRowLoadEnd = async (title: string, entries: Entry[][]) => {
+  const onRowLoadEnd = async (title: string, entries: PDFEntry[]) => {
     console.debug("Loaded PDF:", title);
     setLoading(true);
     outputRef.current?.classList.remove("borderedBlink");
@@ -102,7 +99,7 @@ export function MagyarKozlony() {
         (async function () {
           setAiLoading(true);
           setAiOverviewMarkdownContent("");
-          const aiOverview = await getAiOverview(current, entries[0]);
+          const aiOverview = await getAiOverview(current, entries);
           if (!aiOverview) {
             setAiLoading(false);
             setAiOverviewMarkdownContent("< Kérjük, próbálja meg később >");
@@ -125,7 +122,6 @@ export function MagyarKozlony() {
           writeChunk(0);
 
           setTimeout(() => {
-            aiBlinkRef.current?.scrollIntoView({ behavior: "smooth" });
             aiBlinkRef.current?.classList.add("borderedBlink");
           }, 250);
           setAiLoading(false);
@@ -142,27 +138,33 @@ export function MagyarKozlony() {
     if (!outputRef.current) {
       return;
     }
-
-    outputRef.current.innerText = `${entries.map((b) =>
-      b.map((entry) => `${entry.id} ${entry.name} ${entry.num}\n`).join(""),
-    )}`;
+    const htmlTable = getAsTable(entries);
+    outputRef.current.innerHTML = htmlTable;
     setTimeout(() => {
-      outputRef.current?.scrollIntoView({ behavior: "smooth" });
-      outputRef.current?.classList.add("borderedBlink");
+      if (!outputRef.current) return;
+      outputRef.current.classList.add("borderedBlink");
+      const rect = outputRef.current.getBoundingClientRect();
+      const elementTop = rect.top + window.scrollY;
+      const elementHeight = rect.height;
+      const viewportHeight = window.innerHeight;
+      const top = elementTop + elementHeight / 2 - viewportHeight / 2;
+      window.scrollTo({ top: Math.max(0, top), behavior: "smooth" });
     }, 250);
   };
 
   const onCopyToClipboard = async () => {
-    if (!outputRef.current || !currentPDFEntries.length) {
+    if (!currentPDFEntries.length) {
       return;
     }
     setLoading(true);
-    const htmlTable = await getAsTable(current, currentPDFEntries);
+    const htmlTable = getAsTable(currentPDFEntries);
     if (htmlTable) {
-      outputRef.current.innerHTML = `<div style="max-width: 500px">${htmlTable}</div>`;
       setTimeout(() => {
-        outputRef.current?.scrollIntoView({ behavior: "smooth" });
-        outputRef.current?.classList.add("borderedBlink");
+        if (!outputRef.current) {
+          return;
+        }
+        outputRef.current.scrollIntoView({ behavior: "smooth" });
+        outputRef.current.classList.add("borderedBlink");
       }, 250);
       await copyToClipboard(htmlTable);
     }
@@ -223,7 +225,9 @@ export function MagyarKozlony() {
         </div>
 
         <div className="flex flex-col items-center justify-between gap-16">
-          <div ref={tableBlinkRef} className="bordered flex items-center">
+          <div
+            ref={tableBlinkRef}
+            className="bordered flex items-center p-2 rounded-md">
             {tableLoading ? (
               <Loader rows={12} size="lg" />
             ) : (
@@ -258,7 +262,7 @@ export function MagyarKozlony() {
               <div
                 ref={outputRef}
                 id="output"
-                className="p-4 rounded-lg w-[600px] max-h-[300px] overflow-y-auto whitespace-pre-line text-xs bordered mb-2"
+                className="p-4 rounded-lg w-[750px] max-h-[500px] overflow-y-auto whitespace-pre-line text-xs bordered mb-2"
               />
               {docLoading ? (
                 <Loader rows={5} />
@@ -273,12 +277,11 @@ export function MagyarKozlony() {
               )}
             </div>
             {ai ? (
-              <div>
-                <hr className="my-6" />
+              <div className="flex flex-col items-center justify-center mt-12">
                 <div className="font-bold mb-2">AI összefoglaló:</div>
                 <div
                   ref={aiBlinkRef}
-                  className="flex flex-col items-center bordered gap-2 w-[500px] text-sm leading-tight">
+                  className="flex flex-col items-center bordered gap-2 w-[600px] text-sm leading-tight rounded-md">
                   {aiLoading ? <Loader rows={5} /> : null}
                   <Markdown>{aiOverviewMarkdownContent}</Markdown>
                 </div>

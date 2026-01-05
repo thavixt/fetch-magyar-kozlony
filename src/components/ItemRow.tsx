@@ -1,14 +1,13 @@
 import { cn } from "@/lib/utils";
-import type { Entry, ListItem } from "@/types";
-import { downloadPdf } from "@/lib/download";
-import { parsePdf } from "@/lib/parse";
+import type { ListItem } from "@/types";
+import { downloadPdf, type PDFEntry } from "@/lib/download";
 import { Button } from "./ui/button";
 
 interface ItemRowProps {
   isCurrent: boolean;
   item: ListItem;
   onLoadStart: (title: string) => void;
-  onLoadEnd: (title: string, entries: Entry[][]) => void;
+  onLoadEnd: (title: string, entries: PDFEntry[]) => void;
 }
 
 export function ItemRow({
@@ -23,9 +22,13 @@ export function ItemRow({
       console.error("No URL provided for item", item);
       return;
     }
-    const pdfBytes = await downloadPdf(url);
-    const entries = await parsePdf(item.title, pdfBytes);
-    onLoadEnd(item.title ?? "", entries);
+    try {
+      const entries = await downloadPdf(url);
+      onLoadEnd(item.title ?? "", entries);
+    } catch (e) {
+      console.error(e);
+      onLoadEnd("Ismeretlen hiba történt :(", []);
+    }
   };
 
   return (

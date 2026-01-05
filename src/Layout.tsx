@@ -1,5 +1,4 @@
 import type { PropsWithChildren } from "react";
-import { NavLinks } from "./components/navlink";
 import { NavLink } from "./components/navlinks";
 import { Flex } from "./components/ui/flex";
 
@@ -17,7 +16,7 @@ interface PageProps {
 export default function Layout({
   children,
   title,
-  subtitle,
+  // subtitle,
   footer = [],
 }: PropsWithChildren<PageProps>) {
   return (

@@ -3,9 +3,11 @@ import { toast } from "sonner";
 import { PLACEHOLDER_TEXT } from "./const";
 
 const corsProxy = (url: string) => {
-  return `https://corsproxy.io/?url=${url}`;
+  return import.meta.env.DEV
+    ? `http://localhost:3000/api/proxy?url=${url}`
+    : `https://personal.komlosidev.net/api/proxy?url=${url}`;
 };
-const serverProxy = (url: string) => {
+const getParsedPdf = (url: string) => {
   return import.meta.env.DEV
     ? `http://localhost:3000/api/parsePdf?url=${url}`
     : `https://personal.komlosidev.net/api/parsePdf?url=${url}`;
@@ -78,7 +80,7 @@ export async function downloadPdf(url: string): Promise<PDFEntry[]> {
       const headers = new Headers();
       headers.append("Content-Type", "application/json");
       try {
-        const response = await fetch(serverProxy(url), { headers });
+        const response = await fetch(getParsedPdf(url), { headers });
         const parsedPdf = (await response.json()) as PDFEntry[];
         resolve(parsedPdf);
       } catch {
